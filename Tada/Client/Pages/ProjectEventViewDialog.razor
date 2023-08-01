@@ -1,0 +1,132 @@
+﻿@using Tada.Shared
+@inherits DialogComponent
+@inject HttpClient Http
+
+
+<div class="modal fade @base.ShowClass" tabindex="-1" style="display: @base.DisplayStyle">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background-color:aliceblue">
+            <div class="modal-header">
+                <h5 class="modal-title"><b>イベント管理</b></h5>
+                <button type="button" class="btn btn-primary" @onclick="AppendButton_Click"><span class="oi oi-plus"></span>&nbsp;新規</button>
+            </div>
+            <div class="modal-body" style="height:640px">
+                <span><button @onclick="ChangedCalendarView">カレンダー</button><button @onclick="ChangedEventView">一覧</button></span>
+                @if (IsView)
+                {
+                    <CalendarViewer DefaultToday="DateTime.Now"></CalendarViewer>
+                }
+                else
+                {
+                    @if (projectEvents == null)
+{
+                        <p><em>Loading...</em></p>
+                    }
+                    else
+                    {
+                        <RadzenDataGrid AllowFiltering="false" AllowColumnResize="true" AllowAlternatingRows="false" FilterMode="FilterMode.Advanced" AllowSorting="false" PageSize="7" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+                                Data="@projectEvents" TItem="ProjectEvent" class="table" EmptyText="登録データはありません">
+                            <Columns>
+                                <RadzenDataGridColumn TItem="ProjectEvent" Filterable="false" Title="日付" Frozen="true" Width="105px" TextAlign="TextAlign.Center">
+                                    <Template Context="projectEvent">
+                                        @projectEvent.EventDay.ToString("yyyy/MM/dd")
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="ProjectEvent" Property="Description" Filterable="false" Title="イベント名" Frozen="true" Width="175px" TextAlign="TextAlign.Left" />
+                                <RadzenDataGridColumn TItem="ProjectEvent" Filterable="false" Title="操作" Frozen="true" Width="110px" TextAlign="TextAlign.Center">
+                                    <Template Context="projectEvent">
+                                        @if (confirmDialog != null)
+                                        {
+                                            <button type="button" class="btn btn-primary" @onclick="() => confirmDialog.ShowDialog(projectEvent)"><span class="oi oi-pencil"></span>&nbsp;編集</button>
+                                        }
+                                    </Template>
+                                </RadzenDataGridColumn>
+                            </Columns>
+                        </RadzenDataGrid>
+                    }
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" style="width:120px" @onclick="() => HideDialog()">閉じる</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal-backdrop fade @base.ShowClass" style="display: @base.DisplayStyle"></div>
+<ProjectEventItemDialog @ref="confirmDialog" AppendSelected="doAppendSelected" UpdatedSelected="doUpdatedSelected">
+</ProjectEventItemDialog>
+
+@code {
+    private ProjectGroup? _projectGroup;
+    private ProjectEvent[]? projectEvents;
+    private ProjectEventItemDialog? confirmDialog;
+    private bool IsView = false;
+
+    public async Task ShowDialog(ProjectGroup projectGroup)
+    {
+        _projectGroup = projectGroup;
+        projectEvents = await Http.GetFromJsonAsync<ProjectEvent[]>(HttpApi.ProjectEventUri + "/" +  _projectGroup.Id);
+
+        await base.ShowDialog();
+    }
+
+    private void ChangedCalendarView()
+    {
+        IsView = true;
+        StateHasChanged();
+    }
+
+    private void ChangedEventView()
+    {
+        IsView = false;
+        StateHasChanged();
+    }
+
+    private async Task AppendButton_Click()
+    {
+        if (_projectGroup != null && confirmDialog != null)
+        {
+            var projectEvent = new ProjectEvent();
+            projectEvent.ProjectId = _projectGroup.Id;
+            await confirmDialog.ShowDialogCreated(projectEvent);
+        }
+    }
+
+    private async Task doSearch()
+    {
+        if (_projectGroup != null)
+        {
+            projectEvents = await Http.GetFromJsonAsync<ProjectEvent[]>(HttpApi.ProjectEventUri + "/" + _projectGroup.Id);
+        }
+        StateHasChanged();
+    }
+
+    private async Task doAppendSelected(DialogResult dialogResult)
+    {
+        if (dialogResult.IsOk && dialogResult.Data != null && _projectGroup != null)
+        {
+            ProjectEvent data = (ProjectEvent)dialogResult.Data;
+            data.ProjectId = _projectGroup.Id;
+
+            // Http経由で登録する
+            await Http.PostAsJsonAsync<ProjectEvent>(HttpApi.ProjectEventUri, data);
+        }
+
+        await doSearch();
+
+    }
+
+    private async Task doUpdatedSelected(DialogResult dialogResult)
+    {
+        if (dialogResult.IsOk && dialogResult.Data != null)
+        {
+            ProjectEvent data = (ProjectEvent)dialogResult.Data;
+
+            // Http経由で更新する
+            await Http.PutAsJsonAsync<ProjectEvent>(HttpApi.ProjectEventUri + "/" + data.ProjectId + "/" + data.Seq, data);
+        }
+        await doSearch();
+
+    }
+
+}

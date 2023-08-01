@@ -1,0 +1,106 @@
+﻿@*
+    ページ概要：グループ管理画面
+
+*@
+
+@page "/"
+@using Tada.Shared
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@attribute [Authorize(Roles = "Admin, User")]
+
+<PageTitle>グループ管理</PageTitle>
+
+<div>
+    <div style="float:right;">
+        @if (projectGroupDialog != null)
+        {
+            <button type="button" class="btn btn-primary" @onclick="() => projectGroupDialog.ShowDialogCreated()"><span class="oi oi-plus"></span>&nbsp;新規</button>
+        }
+    </div>
+    <h2>グループ管理</h2>
+</div>
+<span style="float:none;" />
+<br />
+
+<ProjectGroupDialog @ref=projectGroupDialog AppendSelected="doAppendSelected" UpdatedSelected="doUpdatedSelected">
+</ProjectGroupDialog>
+<ActivityReportViewDialog @ref=activityReportViewDialog>
+</ActivityReportViewDialog>
+
+@if (_projects == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <RadzenDataGrid AllowFiltering="false" AllowColumnResize="true" AllowAlternatingRows="false" FilterMode="FilterMode.Advanced" AllowSorting="false" PageSize="10" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+                Data="@_projects" TItem="ProjectGroup" LogicalFilterOperator="LogicalFilterOperator.Or" EmptyText="登録データはありません">
+        <Columns>
+            <RadzenDataGridColumn TItem="ProjectGroup" Property="Id" Filterable="false" Title="ID" Frozen="true" Width="40px" TextAlign="TextAlign.Center" />
+            <RadzenDataGridColumn TItem="ProjectGroup" Property="Name" Filterable="false" Title="名称" Frozen="true" Width="90px" TextAlign="TextAlign.Left" />
+            <RadzenDataGridColumn TItem="ProjectGroup" Property="Description" Filterable="false" Title="説明" Width="130px" Frozen="true" TextAlign="TextAlign.Left" />
+            <RadzenDataGridColumn TItem="ProjectGroup" Filterable="false" Title="操作" Frozen="true" Width="110px" TextAlign="TextAlign.Center">
+                <Template Context="project">
+                    @if (projectGroupDialog != null)
+                    {
+                        <button type="button" class="btn btn-primary" @onclick="() => projectGroupDialog.ShowDialog(project)"><span class="oi oi-pencil"></span>&nbsp;編集</button>
+                    }
+                    <br />
+                    @if (activityReportViewDialog != null)
+                    {
+                        <button type="button" class="btn btn-warning" style="margin-top:3px;" @onclick="() => activityReportViewDialog.ShowDialog(project)" disabled><span class="oi oi-document"></span>&nbsp;報告書</button>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+
+        </Columns>
+    </RadzenDataGrid>
+}
+@code {
+    private ProjectGroup[]? _projects;
+
+    private ProjectGroupDialog? projectGroupDialog;
+    private ActivityReportViewDialog? activityReportViewDialog;
+
+    // 初期処理
+    protected override async Task OnInitializedAsync()
+    {
+        _projects = await Http.GetFromJsonAsync<ProjectGroup[]>(HttpApi.ProjectGroupUri);
+
+        await base.OnInitializedAsync();
+    }
+
+    private async Task doAppendSelected(DialogResult dialogResult)
+    {
+        if (dialogResult.IsOk)
+        {
+            // DataがNullの場合、例外発生
+            if (dialogResult.Data == null)
+            {
+                throw new ArgumentNullException("dialogResult.Data");
+            }
+            // Http経由で登録する
+            await Http.PostAsJsonAsync<ProjectGroup>(HttpApi.ProjectGroupUri, (ProjectGroup)dialogResult.Data);
+        }
+
+        // プロジェクト一覧を再取得する(キャンセルされても変更されたデータを戻せないため再取得する)
+        _projects = await Http.GetFromJsonAsync<ProjectGroup[]>(HttpApi.ProjectGroupUri);
+
+    }
+
+    private async Task doUpdatedSelected(DialogResult dialogResult)
+    {
+        if (dialogResult.IsOk && dialogResult.Data != null)
+        {
+            var pg = (ProjectGroup)dialogResult.Data;
+            // Http経由で更新する
+            await Http.PutAsJsonAsync<ProjectGroup>(HttpApi.ProjectGroupUri + "/" + pg.Id, pg);
+        }
+
+        // プロジェクト一覧を再取得する(キャンセルされても変更されたデータを戻せないため再取得する)
+        _projects = await Http.GetFromJsonAsync<ProjectGroup[]>(HttpApi.ProjectGroupUri);
+
+    }
+
+}

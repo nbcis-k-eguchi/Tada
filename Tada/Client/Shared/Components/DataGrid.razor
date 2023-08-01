@@ -1,0 +1,39 @@
+﻿<h3>DataGrid</h3>
+
+@code {
+    [Parameter]
+    public Type TValue { get; set; } = typeof(object);
+
+    [Parameter]
+    public List<object> DataSource { get; set; } = new List<object>();
+
+    [Parameter]
+    public int PageSize { get; set; } = 10;
+
+    private int currentPage = -1;
+
+    private int pageCount
+    {
+        get
+        {
+            if (DataSource.Count <= 0)
+            {
+                return 0;
+            }
+            else
+            {
+                if (PageSize <= 0)
+                {
+                    return 0;
+                }
+                else
+                {
+                    return DataSource.Count / PageSize;
+                }
+            }
+        }
+    }
+
+
+
+}

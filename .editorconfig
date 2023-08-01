@@ -1,0 +1,5 @@
+﻿[*.cs]
+
+# IDE0063: 単純な 'using' ステートメントを使用する
+# 除外理由：usingの範囲を明示的に示すことで作成者の意図を残すため
+dotnet_diagnostic.IDE0063.severity = none

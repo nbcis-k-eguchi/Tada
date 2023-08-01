@@ -1,0 +1,156 @@
+﻿@using Tada.Shared;
+@using Tada.Client.Shared.Components;
+@using Tada.Client.Authentication;
+@inherits DialogComponent
+@inject HttpClient Http
+@inject AuthenticationStateProvider authStateProvider
+
+<div class="modal fade @base.ShowClass" tabindex="-1" style="display: @base.DisplayStyle">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background-color:beige">
+            <div class="modal-header">
+                <h5 class="modal-title"><b>@Title</b></h5>
+                @if (IsEdit && confirmDialog != null)
+                {
+                    <span style="float:right;"><button class="btn btn-danger" @onclick="() => confirmDialog.ShowDialog()"><span class="oi oi-trash"></span>&nbsp;削除</button> </span>
+                }
+            </div>
+            <div class="modal-body">
+                <EditForm Model="@_balanceSheet">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+                    <div>
+                        <label for="balanceSheet_BalanceDate">記載日</label><br />
+                        <InputDate id="_balanceSheet_BalanceDate" @bind-Value="_balanceSheet.BalanceDate" />
+                    </div>
+                    <div style="margin-top:5px;">
+                        <label for="balanceSheet_BalanceDate">収支</label><br />
+                        <InputSelect id="balanceSheet_BalanceDate" @bind-Value="_balanceSheet.BalanceType" class="btn btn-light" style="width:150px;text-align:left">
+                            @if (_balanceSheet.BalanceType == 0)
+                            {
+                                <option value="0" selected>収入</option>
+                                <option value="1">支出</option>
+                            }
+                            else
+                            {
+                                <option value="0">収入</option>
+                                <option value="1" selected>支出</option>
+                            }
+                        </InputSelect>
+                    </div>
+                    <div style="margin-top:5px;">
+                        <label for="_balanceSheet_SubjectName">科目（購入品名、収入の名目など）</label><br />
+                        <InputText id="_balanceSheet_SubjectName" @bind-Value=_balanceSheet.SubjectName></InputText>
+                    </div>
+                    <div style="margin-top:5px;">
+                        <label for="_balanceSheet-Amount">金額</label><br />
+                        <InputNumber id="_balanceSheet-Amount" @bind-Value=_balanceSheet.Amount></InputNumber>
+                    </div>
+                    <div style="margin-top:5px;">
+                        <label for="_balanceSheet-IsExpense">清算状況（清算したらチェックを付ける）</label><br />
+                        <InputCheckbox id="_balanceSheet-IsExpense" @bind-Value=_balanceSheet.IsExpense>清算済み</InputCheckbox>
+                    </div>
+                </EditForm>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" style="width:120px" @onclick="() => SelectAction(new DialogResult(){ IsOk = false })">キャンセル</button>
+                <button type="button" class="btn btn-primary" style="width:120px" @onclick="() => SelectAction(new DialogResult(){ IsOk = true })">O K</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop fade @base.ShowClass" style="display: @base.DisplayStyle"></div>
+<ConfirmDialog @ref="confirmDialog" Message="削除してよろしいですか？" ActionSelected="confirmDialog_Selected"></ConfirmDialog>
+@code {
+
+
+    private List<string> DropdownValues = new List<string>() { "収入", "支出" };
+
+    private BalanceSheet _balanceSheet = new BalanceSheet();
+    private ConfirmDialog? confirmDialog;
+
+    public string Title { get; set; } = "";
+
+    [Parameter]
+    public EventCallback<DialogResult> AppendSelected { get; set; }
+
+    [Parameter]
+    public EventCallback<DialogResult> UpdatedSelected { get; set; }
+
+    private bool IsEdit
+    {
+        get
+        {
+            if (_balanceSheet == null)
+            {
+                return false;
+            }
+            return _balanceSheet.Seq > 0;
+        }
+    }
+
+    private string? IsRequiredDisabled = "disabled";
+
+
+    public async Task ShowDialogCreated(BalanceSheet balanceSheet)
+    {
+
+        Title = "新規作成";
+        IsRequiredDisabled = "disabled";
+        _balanceSheet = balanceSheet;
+
+        await base.ShowDialog(); ;
+    }
+
+    /// <summary>
+    /// 編集表示
+    /// </summary>
+    /// <param name="projectGroup">対象データ</param>
+    /// <returns>結果</returns>
+    public async Task ShowDialog(BalanceSheet balanceSheet)
+    {
+        Title = "編集";
+        IsRequiredDisabled = null;
+        _balanceSheet = balanceSheet;
+
+        await base.ShowDialog();
+    }
+
+    private async Task SelectAction(DialogResult value)
+    {
+        var customAuthStateProvider = (CustomAuthenticationStateProvider)authStateProvider;
+        var userSession = await customAuthStateProvider.GetUserSession();
+
+        if (value.IsOk)
+        {
+            _balanceSheet.CreateUserId = userSession.UserId;
+            _balanceSheet.UpdateUserId = userSession.UserId;
+            value.Data = _balanceSheet;
+
+        }
+        await HideDialog();
+
+        if (IsEdit)
+            await UpdatedSelected.InvokeAsync(value);
+        else
+            await AppendSelected.InvokeAsync(value);
+
+    }
+
+    private async Task confirmDialog_Selected(DialogResult value)
+    {
+        if (value.IsOk)
+        {
+            // Http経由で削除する
+            await Http.DeleteAsync($"api/BalanceSheet/{_balanceSheet.ProjectId}/{_balanceSheet.Seq}");
+
+            // 削除したら、ダイアログを閉じる→親画面で最新を取得しなおす
+            await HideDialog();
+            await AppendSelected.InvokeAsync(new DialogResult() { IsOk = false });
+
+        }
+
+    }
+
+}

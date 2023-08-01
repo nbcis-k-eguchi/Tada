@@ -1,0 +1,56 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.33516.290
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tada.Server", "Tada\Server\Tada.Server.csproj", "{8500E984-D340-46E6-B386-25D9F85F9970}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tada.Client", "Tada\Client\Tada.Client.csproj", "{752D129F-3339-490A-98B6-993EC343E54D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tada.Shared", "Tada\Shared\Tada.Shared.csproj", "{43A71EFA-B135-442E-8021-29826530BD31}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{59DC70BE-EEF5-426D-8942-96DB9421CD8D}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8500E984-D340-46E6-B386-25D9F85F9970}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8500E984-D340-46E6-B386-25D9F85F9970}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8500E984-D340-46E6-B386-25D9F85F9970}.Debug|x64.ActiveCfg = Debug|x64
+		{8500E984-D340-46E6-B386-25D9F85F9970}.Debug|x64.Build.0 = Debug|x64
+		{8500E984-D340-46E6-B386-25D9F85F9970}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8500E984-D340-46E6-B386-25D9F85F9970}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8500E984-D340-46E6-B386-25D9F85F9970}.Release|x64.ActiveCfg = Release|x64
+		{8500E984-D340-46E6-B386-25D9F85F9970}.Release|x64.Build.0 = Release|x64
+		{752D129F-3339-490A-98B6-993EC343E54D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{752D129F-3339-490A-98B6-993EC343E54D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{752D129F-3339-490A-98B6-993EC343E54D}.Debug|x64.ActiveCfg = Debug|x64
+		{752D129F-3339-490A-98B6-993EC343E54D}.Debug|x64.Build.0 = Debug|x64
+		{752D129F-3339-490A-98B6-993EC343E54D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{752D129F-3339-490A-98B6-993EC343E54D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{752D129F-3339-490A-98B6-993EC343E54D}.Release|x64.ActiveCfg = Release|x64
+		{752D129F-3339-490A-98B6-993EC343E54D}.Release|x64.Build.0 = Release|x64
+		{43A71EFA-B135-442E-8021-29826530BD31}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{43A71EFA-B135-442E-8021-29826530BD31}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{43A71EFA-B135-442E-8021-29826530BD31}.Debug|x64.ActiveCfg = Debug|x64
+		{43A71EFA-B135-442E-8021-29826530BD31}.Debug|x64.Build.0 = Debug|x64
+		{43A71EFA-B135-442E-8021-29826530BD31}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{43A71EFA-B135-442E-8021-29826530BD31}.Release|Any CPU.Build.0 = Release|Any CPU
+		{43A71EFA-B135-442E-8021-29826530BD31}.Release|x64.ActiveCfg = Release|x64
+		{43A71EFA-B135-442E-8021-29826530BD31}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {53B54C5F-8EEF-4581-8941-0038C788DD6C}
+	EndGlobalSection
+EndGlobal

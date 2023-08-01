@@ -1,0 +1,161 @@
+﻿@using Tada.Shared;
+@using Tada.Client.Shared.Components;
+@using Tada.Client.Authentication;
+@inherits DialogComponent
+@inject HttpClient Http
+@inject AuthenticationStateProvider authStateProvider
+
+<div class="modal fade @base.ShowClass" tabindex="-1" style="display: @base.DisplayStyle">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background-color:beige">
+            <div class="modal-header">
+                <h5 class="modal-title"><b>@Title</b></h5>
+                @if (IsEdit && confirmDialog != null)
+                {
+                    <span style="float:right;"><button class="btn btn-danger" @onclick="() => confirmDialog.ShowDialog()"><span class="oi oi-trash"></span>&nbsp;削除</button> </span>
+                }
+            </div>
+            <div class="modal-body">
+                <EditForm Model="@_projectMember">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+                    <div>
+                        <label for="project-employeenumber">社員番号</label><br />
+                        <InputText id="project-employeenumber" @bind-Value="_projectMember.EmployeeNumberValue" style="width:50px;" />
+                    </div>
+                    <div style="margin-top:10px;">
+                        <label for="project-name">名前</label><br />
+                        <InputText id="project-name" @bind-Value="_projectMember.Name" style="width:120px;" />
+                    </div>
+                    <div style="margin-top:10px;">
+                        <label for="project-birthday">生年月日</label><br />
+                        <InputDate id="member-birthday" @bind-Value=_projectMember.Birthday></InputDate>
+                    </div>
+                    <div style="margin-top:10px;">
+                        <label for="project-position">役職・肩書き</label><br />
+                        <InputText id="project-position" @bind-Value="_projectMember.Position" style="width:150px;" />
+                    </div>
+                    <div style="margin-top:10px;">
+                        <label for="project-email">メールアドレス</label><br />
+                        <InputText id="project-email" @bind-Value="_projectMember.EMail" style="width:200px;" />
+                    </div>
+                    <div style="margin-top:10px;">
+                        <label for="project-JoiningDate">加入日</label><br />
+                        <InputDate id="member-JoiningDate" @bind-Value=_projectMember.JoiningDate></InputDate>
+                    </div>
+                    <div style="margin-top:10px;">
+                        <label for="project-ResignationDate">脱退日</label><br />
+                        <InputDate id="member-ResignationDate" @bind-Value=_projectMember.ResignationDate></InputDate>
+                    </div>
+                </EditForm>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" style="width:120px" @onclick="() => SelectAction(new DialogResult(){ IsOk = false })">キャンセル</button>
+                <button type="button" class="btn btn-primary" style="width:120px" @onclick="() => SelectAction(new DialogResult(){ IsOk = true })">O K</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop fade @base.ShowClass" style="display: @base.DisplayStyle"></div>
+<ConfirmDialog @ref="confirmDialog" Message="削除してよろしいですか？" ActionSelected="confirmDialog_Selected"></ConfirmDialog>
+
+@code {
+    private ProjectMember _projectMember = new ProjectMember();
+    private ConfirmDialog? confirmDialog;
+
+    [Parameter]
+    public string Title { get; set; } = "Dialog title";
+
+    [Parameter]
+    public string Message { get; set; } = "Message";
+
+    [Parameter]
+    public EventCallback<DialogResult> AppendSelected { get; set; }
+
+    [Parameter]
+    public EventCallback<DialogResult> UpdatedSelected { get; set; }
+
+    private bool IsEdit { get; set; } = false;
+
+    public async Task ShowDialogCreated(ProjectGroup projectGroup)
+    {
+        Title = "新規作成";
+        _projectMember = new ProjectMember();
+        _projectMember.ProjectId = projectGroup.Id;
+        IsEdit = false;
+
+        await base.ShowDialog();
+    }
+
+    public async Task ShowDialog(ProjectMember projectMember)
+    {
+        Title = "編集";
+        _projectMember = projectMember;
+        _projectMember.EmployeeNumberValue = _projectMember.EmployeeNumber.ToString();
+        IsEdit = true;
+
+        await base.ShowDialog();
+    }
+
+
+    private async Task SelectAction(DialogResult value)
+    {
+        var customAuthStateProvider = (CustomAuthenticationStateProvider)authStateProvider;
+        var userSession = await customAuthStateProvider.GetUserSession();
+
+        if (value.IsOk)
+        {
+            _projectMember.EmployeeNumber = int.Parse(_projectMember.EmployeeNumberValue);
+            _projectMember.IsLock = false;
+            _projectMember.CreateUserId = userSession.UserId;
+            _projectMember.UpdateUserId = userSession.UserId;
+
+            value.Data = _projectMember;
+        }
+
+        await HideDialog();
+
+        if (value.IsOk)
+        {
+            if (IsEdit)
+            {
+                await UpdatedSelected.InvokeAsync(value);
+            }
+            else
+            {
+                await AppendSelected.InvokeAsync(value);
+            }
+        }
+    }
+
+    public async Task ShowConfirmDialog()
+    {
+        if (confirmDialog != null)
+        {
+            await confirmDialog.ShowDialog();
+        }
+    }
+
+    /// <summary>
+    /// 削除確認ダイアログ結果の判定処理
+    /// </summary>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    private async Task confirmDialog_Selected(DialogResult value)
+    {
+        if (value.IsOk)
+        {
+
+            // Http経由で削除する
+            await Http.DeleteAsync(HttpApi.ProjectMemberUri + "/" + _projectMember.ProjectId + "/" + _projectMember.Seq);
+
+            // 削除したら、ダイアログを閉じる(キャンセル)→親画面で最新を取得しなおす
+            await HideDialog();
+
+            await UpdatedSelected.InvokeAsync(new DialogResult() { IsOk = false });
+
+        }
+
+    }
+}

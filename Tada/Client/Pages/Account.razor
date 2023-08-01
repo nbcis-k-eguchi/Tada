@@ -1,0 +1,60 @@
+﻿@page "/account"
+@using Tada.Shared
+@using Tada.Client.Authentication
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider authStateProvider
+
+@attribute [Authorize(Roles = "Admin, User")]
+
+<PageTitle>アカウント設定</PageTitle>
+
+<div>
+    <EditForm Model="@_account">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <RadzenFormField Text="E-Mail" Variant="Variant.Flat" Style="width: 100%;margin-top:5px;">
+            <RadzenTextBox @bind-Value="@_account.Email" Style="width: 100%;" />
+        </RadzenFormField>
+        <RadzenFormField Text="Password" Variant="Variant.Flat" Style="width: 100%;margin-top:5px;">
+            <RadzenPassword @bind-Value="@_account.Password" Style="width: 100%;" />
+        </RadzenFormField>
+    </EditForm>
+</div>
+
+@code {
+
+    private AccountUser _account = new AccountUser();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var customAuthStateProvider = (CustomAuthenticationStateProvider)authStateProvider;
+        customAuthStateProvider.AuthenticationStateChanged += CustomAuthStateProvider_AuthenticationStateChanged;
+        var state = customAuthStateProvider.GetAuthenticationStateAsync();
+        if (state != null)
+        {
+            var user = state;
+            //if (user != null && user.Identity != null)
+            //{
+            //    System.Security.Principal.IIdentity identity = user.Identity;
+            //    _account.Email = identity.Name ?? "";
+            //}
+        }
+
+        //var result = await Http.GetFromJsonAsync<AccountUser>("api/loginAccount");
+        //if (result != null)
+        //{
+        //    _account = result;
+        //}
+    }
+    /// <summary>
+    /// 認証状態変更イベント
+    /// </summary>
+    /// <param name="task"></param>
+    private void CustomAuthStateProvider_AuthenticationStateChanged(Task<AuthenticationState> task)
+    {
+        var t = task;
+
+    }
+
+}

@@ -1,0 +1,153 @@
+﻿@using Tada.Shared
+@using Tada.Client.Shared.Components
+@inherits DialogComponent
+@inject HttpClient Http
+
+<div class="modal fade @base.ShowClass" tabindex="-1" style="display: @base.DisplayStyle">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background-color:lavender">
+            <div class="modal-header">
+                <h5 class="modal-title">メンバー管理</h5>
+                <div>
+                    @if (confirmDialog != null && _projectGroup != null)
+                    {
+                        <button type="button" class="btn btn-primary" @onclick="() => confirmDialog.ShowDialogCreated(_projectGroup)"><span class="oi oi-plus"></span>&nbsp;新規</button>
+                    }
+                </div>
+            </div>
+            <div class="modal-body" style="height:600px;">
+                @if (projectMembers == null)
+                {
+                    <p><em>Loading...</em></p>
+                }
+                else
+                {
+                    <div style="float:left;text-align:left;width:50%">@memberscount</div>
+                    <div style="float:left;text-align:right;width:50%">
+                        <RadzenCheckBox @bind-Value=@resignationIn Name="ResignationIn" @onclick="doSearch" />
+                        <RadzenLabel Text="退職者を含む" Component="ResignationIn" Style="margin-left: 8px; vertical-align: middle;" @onclick="doSearch" />
+                    </div>
+                    <RadzenDataGrid AllowFiltering="false" AllowColumnResize="true" AllowAlternatingRows="false" FilterMode="FilterMode.Advanced" AllowSorting="false" PageSize="7" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+                                Data="@projectMembers" TItem="ProjectMember" LogicalFilterOperator="LogicalFilterOperator.Or" class="table" EmptyText="登録データはありません">
+                        <Columns>
+                            <RadzenDataGridColumn TItem="ProjectMember" Property="EmployeeNumber" Filterable="false" Title="社員番号" Frozen="true" Width="80px" TextAlign="TextAlign.Center" />
+                            <RadzenDataGridColumn TItem="ProjectMember" Filterable="false" Title="名前" Frozen="true" Width="120px" TextAlign="TextAlign.Left">
+                                <Template Context="projectMember">
+                                    @if(projectMember.Position != "")
+                                    {
+                                        <span class="badge bg-info" style="margin-right:5px;">@projectMember.Position</span>
+                                    }
+                                    @projectMember.Name
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="ProjectMember" Filterable="false" Title="年齢" Width="60px" Frozen="true" TextAlign="TextAlign.Center">
+                                <Template Context="projectMember">
+                                    @GetAgeDisp(GetAge(projectMember.Birthday))
+                                </Template>
+                            </RadzenDataGridColumn>
+
+                            <RadzenDataGridColumn TItem="ProjectMember" Filterable="false" Title="操作" Frozen="true" Width="90px" TextAlign="TextAlign.Center">
+                                <Template Context="project">
+                                    @if (confirmDialog != null)
+                                    {
+                                        <button type="button" class="btn btn-primary" @onclick="() => confirmDialog.ShowDialog(project)"><span class="oi oi-pencil"></span>&nbsp;編集</button>
+                                    }
+
+                                </Template>
+                            </RadzenDataGridColumn>
+
+                        </Columns>
+                    </RadzenDataGrid>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" style="width:120px" @onclick="() => base.HideDialog()">閉じる</button>
+            </div>
+        </div>
+    </div>
+</div>
+<ProjectMemberItemDialog @ref="confirmDialog" AppendSelected="doAppendSelected" UpdatedSelected="doUpdatedSelected">
+</ProjectMemberItemDialog>
+
+<div class="modal-backdrop fade @base.ShowClass" style="display: @base.DisplayStyle"></div>
+
+@code {
+    private ProjectGroup? _projectGroup;
+    private ProjectMember[]? projectMembers;
+    private ProjectMemberItemDialog? confirmDialog;
+    private bool resignationIn = false;  // defaultは退職者を含まない
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+    }
+
+    public async Task doSearch()
+    {
+        string query = resignationIn ? "1" : "0";
+        if (_projectGroup != null)
+        {
+            projectMembers = await Http.GetFromJsonAsync<ProjectMember[]>(HttpApi.ProjectMemberUri + "/" + _projectGroup.Id + "?query=" + query);
+        }
+    }
+
+    public async Task ShowDialog(ProjectGroup projectGroup)
+    {
+        _projectGroup = projectGroup;
+
+        await doSearch();
+
+        await base.ShowDialog();
+    }
+
+    private int GetAge(DateTime? birthDay)
+    {
+        if (birthDay == null) return -1;
+
+        var today = DateTime.Today;
+        var age = today.Year - ((DateTime)birthDay).Year;
+        if (birthDay > today.AddYears(-age)) age--;
+        return age;
+    }
+
+    private string GetAgeDisp(int age)
+    {
+        if (age == -1) return "";
+
+        return age.ToString();
+    }
+
+    private async Task doAppendSelected(DialogResult dialogResult)
+    {
+        if (dialogResult.IsOk && dialogResult.Data != null)
+        {
+            // Http経由で登録する
+            await Http.PostAsJsonAsync<ProjectMember>(HttpApi.ProjectMemberUri, (ProjectMember)dialogResult.Data);
+        }
+
+        await doSearch();
+
+    }
+
+    private async Task doUpdatedSelected(DialogResult dialogResult)
+    {
+        if (dialogResult.IsOk && dialogResult.Data != null)
+        {
+            var projectMember = (ProjectMember)dialogResult.Data;
+            // Http経由で更新する
+            await Http.PutAsJsonAsync<ProjectMember>(HttpApi.ProjectMemberUri + "/" + projectMember.ProjectId + "/" + projectMember.Seq, projectMember);
+        }
+        await doSearch();
+
+    }
+
+    private string memberscount
+    {
+        get
+        {
+            if (projectMembers == null) return "";
+            return string.Format("トータル：{0} 名", projectMembers.Length.ToString());
+        }
+    }
+
+}

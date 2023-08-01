@@ -1,0 +1,124 @@
+﻿@using Tada.Shared
+@inherits DialogComponent
+@inject HttpClient Http
+
+
+<div class="modal fade @base.ShowClass" tabindex="-1" style="display: @base.DisplayStyle">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background-color:aliceblue">
+            <div class="modal-header">
+                <h5 class="modal-title"><b>活動報告</b></h5>
+                <button type="button" class="btn btn-primary" @onclick="AppendButton_Click"><span class="oi oi-plus"></span>&nbsp;新規</button>
+            </div>
+            <div class="modal-body" style="height:640px">
+                <div>登録した活動報告書の一覧</div>
+                @if (activityReports == null)
+{
+                    <p><em>Loading...</em></p>
+                }
+                else
+                {
+                    <RadzenDataGrid AllowFiltering="false" AllowColumnResize="true" AllowAlternatingRows="false" FilterMode="FilterMode.Advanced" AllowSorting="false" PageSize="7" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+                            Data="@activityReports" TItem="ActivityReport" class="table" EmptyText="登録データはありません">
+                        <Columns>
+                            <RadzenDataGridColumn TItem="ActivityReport" Filterable="false" Title="日付" Frozen="true" Width="105px" TextAlign="TextAlign.Center">
+                                <Template Context="activityReport">
+                                    @activityReport.ReportDay.ToString("yyyy/MM/dd")
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="ActivityReport" Property="ReportName" Filterable="false" Title="報告名" Frozen="true" Width="175px" TextAlign="TextAlign.Left" />
+                            <RadzenDataGridColumn TItem="ActivityReport" Filterable="false" Title="操作" Frozen="true" Width="110px" TextAlign="TextAlign.Center">
+                                <Template Context="activityReport">
+                                    @if (confirmDialog != null)
+                                    {
+                                        <button type="button" class="btn btn-primary" @onclick="() => confirmDialog.ShowDialog(activityReport)"><span class="oi oi-pencil"></span>&nbsp;編集</button>
+                                    }
+                                </Template>
+                            </RadzenDataGridColumn>
+                        </Columns>
+                    </RadzenDataGrid>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" style="width:120px" @onclick="() => HideDialog()">閉じる</button>
+            </div>
+        </div>
+    </div>
+</div>
+<div class="modal-backdrop fade @base.ShowClass" style="display: @base.DisplayStyle"></div>
+<ActivityReportItemDialog @ref="confirmDialog" AppendSelected="doAppendSelected" UpdatedSelected="doUpdatedSelected">
+</ActivityReportItemDialog>
+
+@code {
+    private ProjectGroup? _projectGroup;
+    private ActivityReport[]? activityReports;
+    private ActivityReportItemDialog? confirmDialog;
+
+    public async Task ShowDialog(ProjectGroup projectGroup)
+    {
+        _projectGroup = projectGroup;
+        activityReports = await Http.GetFromJsonAsync<ActivityReport[]>(HttpApi.ActivityReportUri + "/" + _projectGroup.Id);
+
+        await base.ShowDialog();
+    }
+
+    private void ChangedCalendarView()
+    {
+        StateHasChanged();
+    }
+
+    private void ChangedEventView()
+    {
+        StateHasChanged();
+    }
+
+    private async Task AppendButton_Click()
+    {
+        if (_projectGroup != null && confirmDialog != null)
+        {
+            var activityReport = new ActivityReport();
+            activityReport.ProjectId = _projectGroup.Id;
+            await confirmDialog.ShowDialogCreated(activityReport);
+        }
+    }
+
+    private async Task doSearch()
+    {
+        if (_projectGroup != null)
+        {
+            activityReports = await Http.GetFromJsonAsync<ActivityReport[]>(HttpApi.ActivityReportUri + "/" + _projectGroup.Id);
+        }
+        StateHasChanged();
+    }
+
+    private async Task doAppendSelected(DialogResult dialogResult)
+    {
+        if (dialogResult.IsOk && dialogResult.Data != null && _projectGroup != null)
+        {
+            ActivityReport data = (ActivityReport)dialogResult.Data;
+            data.ProjectId = _projectGroup.Id;
+            data.CreateDate = DateTime.Now;
+            data.UpdateDate = DateTime.Now;
+
+            // Http経由で登録する
+            await Http.PostAsJsonAsync<ActivityReport>(HttpApi.ActivityReportUri, data);
+        }
+
+        await doSearch();
+
+    }
+
+    private async Task doUpdatedSelected(DialogResult dialogResult)
+    {
+        if (dialogResult.IsOk && dialogResult.Data != null)
+        {
+            ActivityReport data = (ActivityReport)dialogResult.Data;
+
+            // Http経由で更新する
+            await Http.PutAsJsonAsync<ActivityReport>(HttpApi.ActivityReportUri + "/" + data.ProjectId + "/" + data.Seq, data);
+        }
+        await doSearch();
+
+    }
+
+}

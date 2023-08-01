@@ -1,0 +1,288 @@
+﻿<style>
+	.calendar {
+    padding: 20px 30px;
+    position: relative;
+}
+
+    .calendar .calendar-nav {
+        text-align: right;
+        position: absolute;
+        top: 52px;
+        right: 30px;
+        font-weight: 500;
+    }
+
+        .calendar .calendar-nav a {
+            border: 1px solid #ececec;
+            padding: .5rem .75rem;
+            margin-left: -1px;
+        }
+
+
+.calendar .calendar-row {
+    display: flex;
+    flex: 1 1 0;
+}
+
+.calendar .calendar-day {
+    width: 100%;
+    padding: .5rem .5rem;
+    min-height: 3.2em;
+    text-align: right;
+    border: 1px solid #ececec;
+    margin: -1px 0 0 -1px;
+}
+
+    .calendar .calendar-day.day-name {
+        min-height: 0;
+        border: none;
+    }
+
+    .calendar .calendar-day .calendar-date {
+        color: #000;
+        font-size: 1.25rem;
+        font-weight: 600;
+    }
+
+    .calendar .calendar-day:hover .calendar-date {
+        color: #ee3c48;
+        cursor: pointer;
+    }
+
+    .calendar .calendar-day.inactive .calendar-date {
+        color: #999;
+        font-weight: 300;
+    }
+
+    .calendar .calendar-day.active .calendar-date {
+        color: #ee3c48;
+    }
+
+    .calendar .calendar-day.weekend {
+        background: #f9f9f9;
+    }
+
+    .calendar .calendar-day .calendar-event {
+        height: 16px;
+        padding-top: 1px;
+        padding: 1px 8px 0 8px;
+        font-size: .7rem;
+        font-weight: 400;
+        border-radius: 10px;
+        background-color: #ececec;
+        color: #999;
+        display: inline-block;
+        margin-top: 3px;
+    }
+
+</style>
+
+<div class="calendar">
+	<section class="calendar-header">
+		<h2><strong>@YearMonth</strong></h2>
+		<div class="calendar-nav">
+			<a href="#" @onclick="()=>Prev()"><i class="oi oi-arrow-circle-left"></i></a><a href="#">Today</a><a href="#" @onclick="()=>Next()"><i class="oi oi-arrow-circle-right"></i></a>&nbsp;
+		</div>
+		<br/>
+	</section>
+	<section class="calendar-row">
+		@foreach (var item in weekdayNames)
+		{
+			<div class="calendar-day day-name">@item</div>
+		}
+	</section>
+	@foreach (var week in calendarModel.Weeks)
+{
+        <section class="calendar-row">
+            @foreach (var day in week)
+            {
+                <div class="calendar-day @day.DayClass">
+                    <span class="calendar-date" @onclick="()=>OnClickDay(day)">@day.Day</span>
+@*                    @if (day.HasEvent)
+                    {
+                        <br/><span class="calendar-event">@day.EventCount</span>
+                    }*@
+                </div>
+            }
+        </section>
+    }
+@*	<section class="calendar-row">
+		<div class="calendar-day inactive">
+			<span class="calendar-date">31</span>
+		</div>
+		<div class="calendar-day active">
+			<span class="calendar-date">1</span>
+			<br/><span class="calendar-event">4</span>
+		</div>
+		<div class="calendar-day">
+			<span class="calendar-date">2</span>
+		</div>
+		<div class="calendar-day">
+			<span class="calendar-date">3</span>
+		</div>
+		<div class="calendar-day">
+			<span class="calendar-date">4</span>
+		</div>
+		<div class="calendar-day weekend">
+			<span class="calendar-date">5</span>
+		</div>
+		<div class="calendar-day weekend">
+			<span class="calendar-date">6</span>
+		</div>
+	</section>
+	<section class="calendar-row">
+		<div class="calendar-day">
+			<span class="calendar-date">7</span>
+		</div>
+		<div class="calendar-day">
+			<span class="calendar-date">8</span>
+		</div>
+		<div class="calendar-day">
+			<span class="calendar-date">9</span>
+		</div>
+		<div class="calendar-day">
+			<span class="calendar-date">10</span>
+		</div>
+		<div class="calendar-day">
+			<span class="calendar-date">11</span>
+		</div>
+		<div class="calendar-day weekend">
+			<span class="calendar-date">12</span>
+		</div>
+		<div class="calendar-day weekend">
+			<span class="calendar-date">13</span>
+		</div>
+	</section>
+	<section class="calendar-row">
+		<div class="calendar-day">
+			<span class="calendar-date">14</span>
+		</div>
+		<div class="calendar-day">
+			<span class="calendar-date">15</span>
+			<br/><span class="calendar-event">5</span>
+		</div>
+		<div class="calendar-day">
+			<span class="calendar-date">16</span>
+		</div>
+		<div class="calendar-day">
+			<span class="calendar-date">17</span>
+		</div>
+		<div class="calendar-day">
+			<span class="calendar-date">18</span>
+		</div>
+		<div class="calendar-day weekend">
+			<span class="calendar-date">19</span>
+		</div>
+		<div class="calendar-day weekend">
+			<span class="calendar-date">20</span>
+		</div>
+	</section>
+	<section class="calendar-row">
+		<div class="calendar-day">
+			<span class="calendar-date">21</span>
+		</div>
+		<div class="calendar-day">
+			<span class="calendar-date">22</span>
+		</div>
+		<div class="calendar-day">
+			<span class="calendar-date">23</span>
+		</div>
+		<div class="calendar-day">
+			<span class="calendar-date">24</span>
+		</div>
+		<div class="calendar-day">
+			<span class="calendar-date">25</span>
+		</div>
+		<div class="calendar-day weekend">
+			<span class="calendar-date">26</span>
+			<br/><span class="calendar-event">1</span>
+		</div>
+		<div class="calendar-day weekend">
+			<span class="calendar-date">27</span>
+		</div>
+	</section>
+	<section class="calendar-row">
+		<div class="calendar-day">
+			<span class="calendar-date">28</span>
+		</div>
+		<div class="calendar-day">
+			<span class="calendar-date">29</span>
+		</div>
+		<div class="calendar-day">
+			<span class="calendar-date">30</span>
+		</div>
+		<div class="calendar-day">
+			<span class="calendar-date">31</span>
+			<br/><span class="calendar-event">3</span>
+		</div>
+		<div class="calendar-day inactive">
+			<span class="calendar-date">1</span>
+		</div>
+		<div class="calendar-day weekend inactive">
+			<span class="calendar-date">2</span>
+		</div>
+		<div class="calendar-day weekend inactive">
+			<span class="calendar-date">3</span>
+		</div>
+	</section>
+*@</div>
+
+@code {
+
+	[Parameter]
+	public DateTime DefaultToday { get; set; }
+
+	private CalendarModel calendarModel = new CalendarModel();
+
+	private string[] weekdayNames = { "日", "月", "火", "水", "木", "金", "土" };
+
+	private string YearMonth => calendarModel.CurrentDay.ToString("yyyy年 M月");
+
+	private DateTime prevMonth => calendarModel.CurrentDay.AddMonths(-1);
+	private DateTime nextMonth => calendarModel.CurrentDay.AddMonths(1);
+
+	protected override void OnAfterRender(bool firstRender)
+	{
+		if (firstRender)
+		{
+			calendarModel.CurrentDay = DefaultToday;
+		}
+
+		// CalendarModelのイベントハンドラ設定
+		calendarModel.OnClickDay += OnClickDay;
+
+		base.OnAfterRender(firstRender);
+	}
+
+	private void OnClickDay(CalendarDayStyle? calendarDayStyle)
+	{
+		// 引数がNullの時はエラー
+		if (calendarDayStyle == null) throw new ArgumentNullException();
+
+		// クリックした日のカレンダー位置に反映
+		calendarModel.CurrentDay = calendarDayStyle.Date;
+		doSearch();
+		StateHasChanged();
+	}
+
+	/// <summary>
+	/// イベント登録データの検索
+	/// </summary>
+	private void doSearch()
+	{
+
+	}
+
+	private void Prev()
+	{
+		calendarModel.PrevMonth();
+		doSearch();
+		StateHasChanged();
+	}
+	private void Next()
+	{
+		calendarModel.NextMonth();
+		doSearch();
+        StateHasChanged();
+    }
+}

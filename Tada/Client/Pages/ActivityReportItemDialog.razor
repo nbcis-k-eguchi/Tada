@@ -1,0 +1,204 @@
+﻿@using Tada.Shared;
+@using Tada.Client.Shared.Components;
+@using System.Net.Http.Headers
+@using Tada.Client.Authentication;
+@inherits DialogComponent
+@inject HttpClient Http
+@inject AuthenticationStateProvider authStateProvider
+
+<div class="modal fade @base.ShowClass" tabindex="-1" style="display: @base.DisplayStyle">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background-color:beige">
+            <div class="modal-header">
+                <h5 class="modal-title"><b>@Title</b></h5>
+                @if (IsEdit && confirmDialog != null)
+                {
+                    <span style="float:right;"><button class="btn btn-danger" @onclick="() => confirmDialog.ShowDialog()"><span class="oi oi-trash"></span>&nbsp;削除</button> </span>
+                }
+            </div>
+            <div class="modal-body">
+                <EditForm Model="@_activityReport">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+                    <div>
+                        <label for="_activityReport_ReportDay">報告日</label><br />
+                        <InputDate id="_activityReport_ReportDay" @bind-Value="_activityReport.ReportDay" />
+                    </div>
+                    <div style="margin-top:5px;">
+                        <label for="_balanceSheet_SubjectName">報告名</label><br />
+                        <InputText id="_balanceSheet_SubjectName" @bind-Value=_activityReport.ReportName></InputText>
+                    </div>
+                    <div style="margin-top:5px;">
+                        <label for="_balanceSheet_SubjectName">添付報告書</label><br />
+                        <InputFile id="_balanceSheet_SubjectName" OnChange="@OnInputFileChange">ファイル添付</InputFile>
+                    </div>
+                </EditForm>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" style="width:120px" @onclick="() => SelectAction(new DialogResult(){ IsOk = false })">キャンセル</button>
+                <button type="button" class="btn btn-primary" style="width:120px" @onclick="() => SelectAction(new DialogResult(){ IsOk = true })" disabled="@uploadbuttonDisabled">O K</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop fade @base.ShowClass" style="display: @base.DisplayStyle"></div>
+<ConfirmDialog @ref="confirmDialog" Message="削除してよろしいですか？" ActionSelected="confirmDialog_Selected"></ConfirmDialog>
+@code {
+    private ActivityReport _activityReport = new ActivityReport();
+    private ConfirmDialog? confirmDialog;
+
+    public string Title { get; set; } = "";
+
+    [Parameter]
+    public EventCallback<DialogResult> AppendSelected { get; set; }
+
+    [Parameter]
+    public EventCallback<DialogResult> UpdatedSelected { get; set; }
+
+    private bool IsEdit
+    {
+        get
+        {
+            if (_activityReport == null)
+            {
+                return false;
+            }
+            return _activityReport.Seq > 0;
+        }
+    }
+
+    public async Task ShowDialogCreated(ActivityReport activityReport)
+    {
+
+        Title = "新規作成";
+        _activityReport = activityReport;
+
+        await base.ShowDialog(); ;
+    }
+
+    /// <summary>
+    /// 編集表示
+    /// </summary>
+    /// <param name="projectGroup">対象データ</param>
+    /// <returns>結果</returns>
+    public async Task ShowDialog(ActivityReport activityReport)
+    {
+        Title = "編集";
+        _activityReport = activityReport;
+
+        await base.ShowDialog();
+    }
+
+    private async Task SelectAction(DialogResult value)
+    {
+        var customAuthStateProvider = (CustomAuthenticationStateProvider)authStateProvider;
+        var userSession = await customAuthStateProvider.GetUserSession();
+
+        HttpResponseMessage? response = null;
+        if (value.IsOk && content != null)
+        {
+            _activityReport.CreateUserId = userSession.UserId;
+            _activityReport.UpdateUserId = userSession.UserId;
+            value.Data = _activityReport;
+            response = await Http.PostAsync("api/FileUpload", content);
+
+        }
+
+        if (response != null && response.IsSuccessStatusCode)
+        {
+            await HideDialog();
+
+            if (IsEdit)
+                await UpdatedSelected.InvokeAsync(value);
+            else
+                await AppendSelected.InvokeAsync(value);
+        }
+
+    }
+
+    private async Task confirmDialog_Selected(DialogResult value)
+    {
+        if (value.IsOk)
+        {
+            // Http経由で削除する
+            await Http.DeleteAsync($"api/BalanceSheet/{_activityReport.ProjectId}/{_activityReport.Seq}");
+
+            // 削除したら、ダイアログを閉じる→親画面で最新を取得しなおす
+            await HideDialog();
+            await AppendSelected.InvokeAsync(new DialogResult() { IsOk = false });
+
+        }
+
+    }
+    private bool isFilePicking = false;
+    private MultipartFormDataContent content = new MultipartFormDataContent();
+    private int maxAllowedFiles = 1;
+    private long maxFileSize = 1024 * 1024 * 5; // MAX 5MB
+    private string massage = "";
+
+    private string? uploadbuttonDisabled => isFilePicking ? null : "disabled";
+
+    private void OnInputFileChange(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            foreach (var file in e.GetMultipleFiles(maxAllowedFiles))
+            {
+                var streamContent = new StreamContent(file.OpenReadStream(maxFileSize));
+                streamContent.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data")
+                    {
+                        Name = "files",
+                        FileName = file.Name
+                    };
+                content.Add(streamContent);
+
+                _activityReport.FilePath = file.Name;
+
+            }
+
+            isFilePicking = true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+        StateHasChanged();
+
+
+    }
+
+    public async Task uploadbutton_click()
+    {
+        try
+        {
+            var response = await Http.PostAsync("api/FileUpload", content);
+            if (response.IsSuccessStatusCode)
+            {
+                // DBに登録する
+                _activityReport.CreateDate = DateTime.Now;
+                _activityReport.UpdateDate = DateTime.Now;
+                await Http.PostAsJsonAsync(HttpApi.ActivityReportUri, _activityReport);
+
+                isFilePicking = false;
+                content = new MultipartFormDataContent();
+
+                await base.HideDialog();
+
+            }
+            else
+            {
+                Console.WriteLine("Fail");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            isFilePicking = false;
+            content = new MultipartFormDataContent();
+        }
+
+    }
+
+
+}

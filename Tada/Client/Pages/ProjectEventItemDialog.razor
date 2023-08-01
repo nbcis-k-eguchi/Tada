@@ -1,0 +1,196 @@
+﻿@using Tada.Shared;
+@using Tada.Client.Shared.Components;
+@using Tada.Client.Authentication;
+@inherits DialogComponent
+@inject HttpClient Http
+@inject AuthenticationStateProvider authStateProvider
+
+<div class="modal fade @base.ShowClass" tabindex="-1" style="display: @base.DisplayStyle">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background-color:beige">
+            <div class="modal-header">
+                <h5 class="modal-title"><b>@Title</b></h5>
+                @if (IsEdit && confirmDialog != null)
+                {
+                    <span style="float:right;"><button class="btn btn-danger" @onclick="() => confirmDialog.ShowDialog()"><span class="oi oi-trash"></span>&nbsp;削除</button> </span>
+                }
+            </div>
+            <div class="modal-body">
+                <EditForm Model="@_projectEvent">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+                    <div>
+                        <label for="_projectEvent_EventDay">イベント日</label><br />
+                        <RadzenDatePicker @bind-Value="_projectEvent.EventDay" id="_projectEvent_EventDay" ShowTime="false" TimeOnly="false" DateFormat="yyyy/MM/dd" Style="width:160px;" />
+
+                    </div>
+                    <div style="margin-top:5px;">
+                        <label for="_projectEvent_Description">イベント名称</label><br />
+                        <InputText id="_projectEvent_Description" @bind-Value="_projectEvent.Description" style="width:250px;" @onblur="projectEvent_Description_blur"></InputText>
+                    </div>
+                    <div style="margin-top:5px;">
+                        <label for="_projectEvent_Location">場所</label><br />
+                        <InputText id="_projectEvent_Location" @bind-Value="_projectEvent.Location" style="width:400px;"></InputText>
+                    </div>
+                    <div style="margin-top:5px;">
+                        <label for="_balanceSheet-Amount">参加人数</label><br />
+                        <InputNumber id="_balanceSheet-Amount" @bind-Value="_projectEvent.MemberCount" style="width:80px;text-align:right;"></InputNumber>
+                    </div>
+                    <div style="margin-top:5px;">
+                        <label for="_balanceSheet-IsExpense">日指定・時間指定</label><br />
+                        <RadzenRadioButtonList @bind-Value="_projectEvent.EventAdapt" TValue="int" Style="outline:none;">
+                                <Items>
+                                    <RadzenRadioButtonListItem Text="日" Value="0" />
+                                    <RadzenRadioButtonListItem Text="時間" Value="1"  />
+                                </Items>
+                        </RadzenRadioButtonList>
+                    </div>
+                    <div style="margin-top:5px;">
+                        <label for="_balanceSheet-IsExpense">開始</label><br />
+                        @if (_projectEvent.EventAdapt == 1)
+                        {
+                            <RadzenDatePicker @bind-Value=_projectEvent.StartTime ShowTime="true" TimeOnly="true" DateFormat="HH:mm" Style="width:100px;" />
+                        }
+                        else
+                        {
+                            <RadzenDatePicker @bind-Value=_projectEvent.StartTime ShowTime="false" TimeOnly="false" DateFormat="yyyy/MM/dd" Style="width:160px;" />
+                        }
+                    </div>
+                    <div style="margin-top:5px;">
+                        <label for="_balanceSheet-IsExpense">終了</label><br />
+                        @if (_projectEvent.EventAdapt == 1)
+                        {
+                            <RadzenDatePicker @bind-Value=_projectEvent.EndTime ShowTime="true" TimeOnly="true" DateFormat="HH:mm" Style="width:100px;" />
+                        }
+                        else
+                        {
+                            <RadzenDatePicker @bind-Value=_projectEvent.EndTime ShowTime="false" TimeOnly="false" DateFormat="yyyy/MM/dd" Style="width:160px;" />
+                        }
+                    </div>
+                </EditForm>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" style="width:120px" @onclick="() => SelectAction(new DialogResult(){ IsOk = false })">キャンセル</button>
+                <button type="button" class="btn btn-primary" style="width:120px" @onclick="() => SelectAction(new DialogResult(){ IsOk = true })" disabled="@IsRequiredDisabled">O K</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop fade @base.ShowClass" style="display: @base.DisplayStyle"></div>
+<ConfirmDialog @ref="confirmDialog" Message="削除してよろしいですか？" ActionSelected="confirmDialog_Selected"></ConfirmDialog>
+@code {
+    private ProjectEvent _projectEvent = new ProjectEvent();
+    private ConfirmDialog? confirmDialog;
+
+    [Parameter]
+    public string Title { get; set; } = "Dialog title";
+
+    [Parameter]
+    public string Message { get; set; } = "Message";
+
+    [Parameter]
+    public EventCallback<DialogResult> AppendSelected { get; set; }
+
+    [Parameter]
+    public EventCallback<DialogResult> UpdatedSelected { get; set; }
+
+    private bool IsEdit
+    {
+        get
+        {
+            if (_projectEvent == null)
+            {
+                return false;
+            }
+            return _projectEvent.Seq > 0;
+        }
+    }
+    private bool IsEventTime = true;
+
+    private string? IsRequiredDisabled = "disabled";
+
+    /// <summary>
+    /// 新規表示
+    /// </summary>
+    /// <param name="projectEvent"></param>
+    /// <returns></returns>
+    public async Task ShowDialogCreated(ProjectEvent projectEvent)
+    {
+        Title = "新規作成";
+        IsRequiredDisabled = "disabled";
+        _projectEvent = projectEvent;
+        _projectEvent.EventDay = DateTime.Now;
+        _projectEvent.StartTime = DateTime.Today;
+        _projectEvent.EndTime = DateTime.Today;
+
+        await base.ShowDialog();
+    }
+
+    /// <summary>
+    /// 編集表示
+    /// </summary>
+    /// <param name="projectGroup">対象データ</param>
+    /// <returns>結果</returns>
+    public async Task ShowDialog(ProjectEvent projectEvent)
+    {
+        Title = "編集";
+        IsRequiredDisabled = null;
+        _projectEvent = projectEvent;
+
+        await base.ShowDialog();
+    }
+
+    /// <summary>
+    /// ダイアログ選択処理
+    /// </summary>
+    /// <param name="value">返却値</param>
+    /// <returns></returns>
+    private async Task SelectAction(DialogResult value)
+    {
+        var customAuthStateProvider = (CustomAuthenticationStateProvider)authStateProvider;
+        var userSession = await customAuthStateProvider.GetUserSession();
+
+        if (value.IsOk)
+        {
+            _projectEvent.CreateUserId = userSession.UserId;
+            _projectEvent.UpdateUserId = userSession.UserId;
+            value.Data = _projectEvent;
+        }
+        await HideDialog();
+
+        if (IsEdit)
+            await UpdatedSelected.InvokeAsync(value);
+        else
+            await AppendSelected.InvokeAsync(value);
+    }
+
+    /// <summary>
+    /// 削除確認ダイアログの選択処理
+    /// </summary>
+    /// <param name="value"></param>
+    /// <returns></returns>
+    private async Task confirmDialog_Selected(DialogResult value)
+    {
+        if (value.IsOk)
+        {
+            // Http経由で削除する
+            await Http.DeleteAsync(HttpApi.ProjectEventUri + "/" + _projectEvent.ProjectId + "/" + _projectEvent.Seq);
+
+            // 削除したら、ダイアログを閉じる→親画面で最新を取得しなおす
+            await HideDialog();
+            await AppendSelected.InvokeAsync(new DialogResult() { IsOk = false });
+        }
+    }
+
+    /// <summary>
+    /// 必須制御
+    /// </summary>
+    /// <param name="args">フォーカスイベント</param>
+    private void projectEvent_Description_blur(FocusEventArgs args)
+    {
+        IsRequiredDisabled = !string.IsNullOrEmpty(_projectEvent.Description) ? null : "disabled";
+
+    }
+
+}

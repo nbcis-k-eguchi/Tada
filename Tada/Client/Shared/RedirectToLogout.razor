@@ -1,0 +1,14 @@
+﻿@using Tada.Client.Authentication
+@inject AuthenticationStateProvider authStateProvider
+@inject NavigationManager Navigation
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationStateTask { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var customAuthStateProvider = (CustomAuthenticationStateProvider)authStateProvider;
+        await customAuthStateProvider.UpdateAuthenticationState(null);
+        Navigation.NavigateTo("/", true);
+    }
+}

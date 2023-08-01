@@ -1,0 +1,54 @@
+﻿@using Tada.Client.Pages
+@using Tada.Client.Shared
+
+<div class="modal fade @classShow" tabindex="-1" style="display: @display;">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background-color:lavenderblush">
+            <div class="modal-header">
+                <h5 class="modal-title"><span class="oi oi-comment-square"></span><span style="margin-left:10px;font-weight:700">@Title</span></h5>
+            </div>
+            <div class="modal-body">
+                @Message
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" style="width:120px" @onclick="() => SelectAction(new DialogResult(){ IsOk = false })">キャンセル</button>
+                <button type="button" class="btn btn-primary" style="width:120px" @onclick="() => SelectAction(new DialogResult(){ IsOk = true })">O K</button>
+            </div>
+        </div>
+    </div>
+</div>
+@code {
+    [Parameter]
+    public string Title { get; set; } = "確認ダイアログ";
+
+    [Parameter]
+    public string Message { get; set; } = "";
+
+    [Parameter]
+    public EventCallback<DialogResult> ActionSelected { get; set; }
+
+    private string display = "none;";
+    private string classShow = "";
+
+    public async Task ShowDialog()
+    {
+        display = "block";
+        await Task.Delay(50);
+        classShow = "show";
+        StateHasChanged();
+    }
+
+    private async Task HideDialog()
+    {
+        classShow = "";
+        await Task.Delay(200);
+        display = "none";
+        StateHasChanged();
+    }
+
+    private async Task SelectAction(DialogResult value)
+    {
+        await HideDialog();
+        await ActionSelected.InvokeAsync(value);
+    }
+}

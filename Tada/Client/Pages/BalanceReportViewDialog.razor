@@ -1,0 +1,198 @@
+﻿@using Tada.Shared;
+@using Tada.Client.Shared.Components
+@inherits DialogComponent
+@inject HttpClient Http
+
+<div class="modal fade @base.ShowClass" tabindex="-1" style="display: @base.DisplayStyle">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background-color:lavender">
+            <div class="modal-header">
+                <h5 class="modal-title">会計管理</h5>
+                @if (confirmDialog != null && _projectGroup != null)
+                {
+                    <button type="button" class="btn btn-primary" @onclick="AppendButton_Click"><span class="oi oi-plus"></span>&nbsp;新規</button>
+                }
+            </div>
+            <div class="modal-body" style="height:660px;">
+                @if (_balanceSheets == null)
+                {
+                    <p><em>Loading...</em></p>
+                }
+                else
+                {
+                    <RadzenDataGrid AllowFiltering="false" AllowColumnResize="true" AllowAlternatingRows="false" FilterMode="FilterMode.Advanced" AllowSorting="false" PageSize="7" AllowPaging="true" PagerHorizontalAlign="HorizontalAlign.Left" ShowPagingSummary="true"
+                                Data="@_balanceSheets" TItem="BalanceSheet" class="table" EmptyText="登録データはありません">
+                        <Columns>
+                            <RadzenDataGridColumn TItem="BalanceSheet" Filterable="false" Title="日付" Frozen="true" Width="105px" TextAlign="TextAlign.Center">
+                                <Template Context="balanceSheet">
+                                    @balanceSheet.BalanceDate.ToString("yyyy/MM/dd")
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="BalanceSheet" Filterable="false" Title="科目" Frozen="true" Width="120px" TextAlign="TextAlign.Left">
+                                <Template Context="balanceSheet">
+                                    @if (balanceSheet.BalanceType == 0)
+                                    {
+                                        <div class="badge bg-success">収入</div>
+                                    }
+                                    else
+                                    {
+                                        <div class="badge bg-danger">支出</div>
+
+                                    }
+                                    <br />
+                                    @balanceSheet.SubjectName
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="BalanceSheet" Filterable="false" Title="金額　" Frozen="true" Width="100px" TextAlign="TextAlign.Right">
+                                <Template Context="balanceSheet">
+                                    @if (!balanceSheet.IsExpense)
+                                    {
+                                        <span class="badge bg-warning">未</span>
+                                    }
+                                    <br />
+                                    @balanceSheet.Amount.ToString("#,0")
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="BalanceSheet" Filterable="false" Title="操作" Frozen="true" Width="110px" TextAlign="TextAlign.Center">
+                                <Template Context="project">
+                                    @if (confirmDialog != null)
+                                    {
+                                        <button type="button" class="btn btn-primary" @onclick="() => confirmDialog.ShowDialog(project)"><span class="oi oi-pencil"></span>&nbsp;編集</button>
+                                    }
+
+                                </Template>
+                            </RadzenDataGridColumn>
+
+                        </Columns>
+                    </RadzenDataGrid>
+                    <div>
+                        <b>収支</b><br />
+                        @totalPayment()
+                    </div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" style="width:120px" @onclick="() => HideDialog()">閉じる</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-backdrop fade @base.ShowClass" style="display: @base.DisplayStyle"></div>
+<BalanceReportItemDialog @ref="confirmDialog" AppendSelected="doAppendSelected" UpdatedSelected="doUpdatedSelected">
+</BalanceReportItemDialog>
+
+@code {
+
+    private ProjectGroup? _projectGroup;
+    private BalanceSheet[]? _balanceSheets;
+    private BalanceReportItemDialog? confirmDialog;
+
+    public async Task ShowDialog(ProjectGroup projectGroup)
+    {
+        _projectGroup = projectGroup;
+        await doSearch();
+
+        await base.ShowDialog();
+    }
+
+    private async Task doSearch()
+    {
+        if (_projectGroup != null)
+        {
+            _balanceSheets = await Http.GetFromJsonAsync<BalanceSheet[]>(HttpApi.BalanceSheetUri + "/" + _projectGroup.Id);
+        }
+    }
+
+    private async Task AppendButton_Click()
+    {
+        if (_projectGroup != null && confirmDialog != null)
+        {
+            var balanceSheet = new BalanceSheet();
+            balanceSheet.ProjectId = _projectGroup.Id;
+            await confirmDialog.ShowDialogCreated(balanceSheet);
+        }
+
+
+    }
+
+    private async Task EditButton_Click(BalanceSheet value)
+    {
+        if (_projectGroup != null && confirmDialog != null)
+        {
+            var balanceSheet = await Http.GetFromJsonAsync<BalanceSheet>(HttpApi.BalanceSheetUri + "/" + value.ProjectId + "/" + value.Seq);
+            if (balanceSheet != null)
+            {
+                await confirmDialog.ShowDialog(balanceSheet);
+            }
+        }
+
+
+    }
+
+    private async Task doAppendSelected(DialogResult dialogResult)
+    {
+        if (dialogResult.IsOk && dialogResult.Data != null && _projectGroup != null)
+        {
+            var data = (BalanceSheet)dialogResult.Data;
+            data.ProjectId = _projectGroup.Id;
+
+            // Http経由で登録する
+            await Http.PostAsJsonAsync<BalanceSheet>(HttpApi.BalanceSheetUri, data);
+        }
+
+        await doSearch();
+
+    }
+
+    private async Task doUpdatedSelected(DialogResult dialogResult)
+    {
+        if (dialogResult.IsOk && dialogResult.Data != null)
+        {
+            BalanceSheet data = (BalanceSheet)dialogResult.Data;
+
+            // Http経由で更新する
+            await Http.PutAsJsonAsync<BalanceSheet>(HttpApi.BalanceSheetUri + "/" + data.ProjectId + "/" + data.Seq, data);
+        }
+        await doSearch();
+
+    }
+
+    private string totalPayment()
+    {
+        int totalPaid = 0;
+        int total = 0;
+        if (_balanceSheets != null)
+        {
+            foreach (var item in _balanceSheets)
+            {
+                if (item.IsExpense)
+                {
+                    if (item.BalanceType == 1)
+                    {
+                        totalPaid -= item.Amount;
+                    }
+                    else
+                    {
+                        totalPaid += item.Amount;
+                    }
+
+                }
+                else
+                {
+                    if (item.BalanceType == 1)
+                    {
+                        total -= item.Amount;
+                    }
+                    else
+                    {
+                        total += item.Amount;
+                    }
+                
+                }
+            }
+        }
+
+        return "残金：" + totalPaid.ToString("#,0") + " 円、未清算：" + total.ToString("#,0") + " 円";
+    }
+}

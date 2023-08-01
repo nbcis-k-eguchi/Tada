@@ -1,0 +1,55 @@
+﻿@page "/signin"
+@using Tada.Shared
+@using Tada.Client.Authentication
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider authStateProvider
+@inject IJSRuntime js
+<PageTitle>ログイン</PageTitle>
+
+<RadzenCard class="rz-shadow-0 rz-border-radius-0 rz-p-8" Style="max-width: 420px;margin:0 auto ">
+    <RadzenFormField Text="E-Mail" Variant="Variant.Flat" Style="width: 100%;margin-top:5px;">
+        <RadzenTextBox @bind-Value="@email" Style="width: 100%;" />
+    </RadzenFormField>
+    <RadzenFormField Text="Password" Variant="Variant.Flat" Style="width: 100%;margin-top:5px;">
+        <RadzenPassword @bind-Value="@password" Style="width: 100%;" />
+    </RadzenFormField>
+    <div style="width: 100%;margin-top:20px;margin-left:120px;">
+        <RadzenButton Shade="Shade.Darker" Text="ログイン" ButtonStyle="ButtonStyle.Info" Style="text-align:center" Click="SignUpButton_Click" />
+    </div>
+</RadzenCard>
+
+@code {
+    private string email = "";
+    private string password = "";
+
+    private async Task SignUpButton_Click()
+    {
+        var loginResponse = await Http.PostAsJsonAsync<LoginRequest>("api/AccountUser/Signin", new LoginRequest() { Email = email, Password = password });
+        if (loginResponse.IsSuccessStatusCode)
+        {
+            var userSession = await loginResponse.Content.ReadFromJsonAsync<UserSession>();
+            var customAuthStateProvider = (CustomAuthenticationStateProvider)authStateProvider;
+            customAuthStateProvider.AuthenticationStateChanged += CustomAuthStateProvider_AuthenticationStateChanged;
+
+            // 認証更新　→　認証状態変更イベント発生　→　ログイン画面へ遷移 ※認証状態変更はMainLayout側も認識するため画面更新が発生する
+            await customAuthStateProvider.UpdateAuthenticationState(userSession);
+
+        }
+        else
+        {
+            await js.InvokeVoidAsync("alert", "メールアドレスまたは、パスワードが間違っています。");
+            return;
+
+        }
+    }
+    /// <summary>
+    /// 認証状態変更イベント
+    /// </summary>
+    /// <param name="task"></param>
+    private void CustomAuthStateProvider_AuthenticationStateChanged(Task<AuthenticationState> task)
+    {
+        NavigationManager.NavigateTo("/", true, true);
+    }
+
+}
